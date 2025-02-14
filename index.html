@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guerra Sagrada: Skibidi Apocalypse</title>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; margin: 0; height: 100vh; background-color: #222; color: white; }
+        canvas { background: #111; display: block; margin: auto; max-width: 100%; height: auto; touch-action: none; }
+        #startScreen, #endScreen { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: block; }
+        #endScreen { display: none; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #444; color: white; border: none; border-radius: 5px; }
+        .controls { position: absolute; bottom: 10px; width: 100%; display: flex; justify-content: center; gap: 10px; }
+        .controls button { width: 60px; height: 60px; font-size: 24px; }
+    </style>
+</head>
+<body>
+    <h1>Guerra Sagrada: Skibidi Apocalypse</h1>
+
+    <!-- Pantalla de inicio -->
+    <div id="startScreen">
+        <p>Haz clic en "Jugar" para comenzar</p>
+        <button onclick="iniciarJuego()">Jugar</button>
+    </div>
+
+    <!-- Pantalla final -->
+    <div id="endScreen">
+        <p id="result"></p>
+        <button onclick="reiniciarJuego()">Volver a jugar</button>
+    </div>
+
+    <!-- Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Controles táctiles -->
+    <div class="controls">
+        <button onclick="mover('left')">⬅</button>
+        <button onclick="mover('up')">⬆</button>
+        <button onclick="mover('down')">⬇</button>
+        <button onclick="mover('right')">➡</button>
+    </div>
+
+    <p id="timer">Tiempo: 0s</p>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const timerElement = document.getElementById("timer");
+        const resultElement = document.getElementById("result");
+        const startScreen = document.getElementById("startScreen");
+        const endScreen = document.getElementById("endScreen");
+
+        canvas.width = window.innerWidth * 0.9;
+        canvas.height = window.innerHeight * 0.6;
+
+        let startTime = 0;
+        let gameStarted = false;
+        let juegoTerminado = false;
+
+        class Personaje {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.experiencia = 0;
+                this.nivel = 1;
+            }
+            dibujar() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, 50, 50);
+            }
+            atacar(enemigo) {
+                if (Math.abs(this.x - enemigo.x) < 50 && Math.abs(this.y - enemigo.y) < 50 && enemigo.vivo) {
+                    enemigo.vivo = false;
+                    this.experiencia += 10;
+                    if (this.experiencia >= 50) {
+                        this.nivel++;
+                        this.experiencia = 0;
+                    }
+                }
+            }
+        }
+
+        class Enemigo {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vivo = true;
+            }
+            dibujar() {
+                if (this.vivo) {
+                    ctx.fillStyle = "red";
+                    ctx.fillRect(this.x, this.y, 50, 50);
+                }
+            }
+        }
+
+        const jugador = new Personaje(canvas.width / 2, canvas.height - 60, "blue");
+        const enemigos = [];
+        for (let i = 0; i < 20; i++) {
+            enemigos.push(new Enemigo(Math.random() * (canvas.width - 50), Math.random() * (canvas.height / 2)));
+        }
+
+        function actualizarJuego() {
+            if (!gameStarted) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            jugador.dibujar();
+            enemigos.forEach(enemigo => {
+                enemigo.dibujar();
+                jugador.atacar(enemigo);
+            });
+
+            let tiempoTranscurrido = ((Date.now() - startTime) / 1000).toFixed(1);
+            timerElement.innerText = "Tiempo: " + tiempoTranscurrido + "s";
+
+            if (enemigos.every(enemigo => !enemigo.vivo)) {
+                resultadoJuego(tiempoTranscurrido);
+            } else {
+                requestAnimationFrame(actualizarJuego);
+            }
+        }
+
+        function resultadoJuego(tiempo) {
+            juegoTerminado = true;
+            resultElement.innerText = "¡Ganaste! Tiempo final: " + tiempo + "s";
+            endScreen.style.display = "block";
+        }
+
+        function iniciarJuego() {
+            startScreen.style.display = "none";
+            gameStarted = true;
+            startTime = Date.now();
+            actualizarJuego();
+        }
+
+        function reiniciarJuego() {
+            juegoTerminado = false;
+            endScreen.style.display = "none";
+            resultElement.innerText = "";
+            enemigos.forEach(enemigo => enemigo.vivo = true);
+            jugador.x = canvas.width / 2;
+            jugador.y = canvas.height - 60;
+            startTime = Date.now();
+            gameStarted = true;
+            actualizarJuego();
+        }
+
+        function mover(direccion) {
+            if (!gameStarted || juegoTerminado) return;
+            const paso = 20;
+            if (direccion === "left" && jugador.x > 0) jugador.x -= paso;
+            if (direccion === "right" && jugador.x < canvas.width - 50) jugador.x += paso;
+            if (direccion === "up" && jugador.y > 0) jugador.y -= paso;
+            if (direccion === "down" && jugador.y < canvas.height - 50) jugador.y += paso;
+        }
+
+        document.addEventListener("keydown", function(event) {
+            if (!gameStarted) return;
+            if (event.key === "ArrowLeft") mover("left");
+            if (event.key === "ArrowRight") mover("right");
+            if (event.key === "ArrowUp") mover("up");
+            if (event.key === "ArrowDown") mover("down");
+        });
+
+    </script>
+</body>
+</html>
